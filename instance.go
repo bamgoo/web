@@ -11,23 +11,25 @@ import (
 )
 
 func (site *Site) newContext() *Context {
-	return &Context{
-		site:       site,
-		Meta:       bamgoo.NewMeta(),
+	ctx := &Context{
+		site:        site,
+		Meta:        bamgoo.NewMeta(),
 		uploadfiles: make([]string, 0),
-		headers:    make(map[string]string, 0),
-		cookies:    make(map[string]http.Cookie, 0),
-		charset:    UTF8,
-		Params:     Map{},
-		Query:      Map{},
-		Form:       Map{},
-		Upload:     Map{},
-		Value:      Map{},
-		Args:       Map{},
-		Locals:     Map{},
-		Data:       Map{},
-		Setting:    Map{},
+		headers:     make(map[string]string, 0),
+		cookies:     make(map[string]http.Cookie, 0),
+		charset:     UTF8,
+		Params:      Map{},
+		Query:       Map{},
+		Form:        Map{},
+		Upload:      Map{},
+		Value:       Map{},
+		Args:        Map{},
+		Locals:      Map{},
+		Data:        Map{},
+		Setting:     Map{},
 	}
+	ctx.Url = webUrl{ctx: ctx}
+	return ctx
 }
 
 func (site *Site) close(ctx *Context) {

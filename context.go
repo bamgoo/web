@@ -53,6 +53,8 @@ type (
 		Type string
 		Data Map
 		Body Any
+
+		Url webUrl
 	}
 
 	ctxFunc func(*Context)

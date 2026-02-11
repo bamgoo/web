@@ -187,24 +187,24 @@ func (m *Module) Config(global Map) {
 	}
 
 	cfgAny, ok := global["web"]
+	if ok {
+		if cfgMap, ok := cfgAny.(Map); ok && cfgMap != nil {
+			m.configureRoot(cfgMap)
+		}
+	}
+
+	siteAny, ok := global["site"]
 	if !ok {
 		return
 	}
-	cfgMap, ok := cfgAny.(Map)
-	if !ok || cfgMap == nil {
+	siteMap, ok := siteAny.(Map)
+	if !ok || siteMap == nil {
 		return
 	}
-
-	rootConfig := Map{}
-	for key, val := range cfgMap {
+	for key, val := range siteMap {
 		if conf, ok := val.(Map); ok && key != "setting" {
 			m.configureSite(key, conf)
-		} else {
-			rootConfig[key] = val
 		}
-	}
-	if len(rootConfig) > 0 {
-		m.configureRoot(rootConfig)
 	}
 }
 
