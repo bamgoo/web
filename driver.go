@@ -17,7 +17,7 @@ type (
 		Open() error
 		Close() error
 
-		Register(name string, info Info, domains []string, domain string) error
+		Register(name string, info Info, hosts []string) error
 
 		Start() error
 		StartTLS(certFile, keyFile string) error

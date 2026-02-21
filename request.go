@@ -62,25 +62,10 @@ func (site *Site) preprocessing(ctx *Context) {
 // finding handles static files.
 func (site *Site) finding(ctx *Context) {
 	if ctx.Name == "" {
-		isDir := false
-		file := ""
-
-		staticPath := path.Join(ctx.site.Config.Static, ctx.Path)
-		if fi, err := os.Stat(staticPath); err == nil {
-			isDir = fi.IsDir()
-			file = staticPath
-		}
-
-		if isDir {
-			tempFile := file
-			file = ""
-			for _, doc := range ctx.site.Config.Defaults {
-				docPath := path.Join(tempFile, doc)
-				if fi, err := os.Stat(docPath); err == nil && !fi.IsDir() {
-					file = docPath
-					break
-				}
-			}
+		file := resolveStaticFile(ctx.site.Config.Static, ctx.Path, ctx.site.Config.Defaults)
+		if file == "" && module.config.Static != "" && module.config.Shared != "" {
+			sharedRoot := path.Join(module.config.Static, module.config.Shared)
+			file = resolveStaticFile(sharedRoot, ctx.Path, module.config.Defaults)
 		}
 
 		if file != "" && !strings.Contains(file, "../") {
@@ -102,22 +87,23 @@ func (site *Site) crossing(ctx *Context) {
 		origin := ctx.Header("Origin")
 		originPassed := false
 
-		if cross.Origin == "*" || cross.Origin == "" {
+		if cross.Origin == "*" || cross.Origin == "" || containsString(cross.Origins, "*") {
 			originPassed = true
-		} else if origin != "" {
-			for _, prefix := range cross.Origins {
-				if strings.HasPrefix(origin, prefix) {
-					originPassed = true
-					break
-				}
-			}
+		} else if origin != "" && containsOrigin(cross.Origins, origin) {
+			originPassed = true
 		}
 
 		method := ctx.Header("Access-Control-Request-Method")
-		methodPassed := cross.Method == "*" || cross.Method == "" || method == ""
+		methodPassed := cross.Method == "*" || cross.Method == "" || containsString(cross.Methods, "*")
+		if !methodPassed {
+			methodPassed = method == "" || containsAll(splitCSV(method), cross.Methods)
+		}
 
 		header := ctx.Header("Access-Control-Request-Headers")
-		headerPassed := cross.Header == "*" || cross.Header == "" || header == ""
+		headerPassed := cross.Header == "*" || cross.Header == "" || containsString(cross.Headers, "*")
+		if !headerPassed {
+			headerPassed = header == "" || containsAll(splitCSV(header), cross.Headers)
+		}
 
 		if originPassed && methodPassed && headerPassed {
 			ctx.Header("Access-Control-Allow-Credentials", "true")
@@ -140,6 +126,83 @@ func (site *Site) crossing(ctx *Context) {
 	}
 
 	ctx.Next()
+}
+
+func resolveStaticFile(root, requestPath string, defaults []string) string {
+	if root == "" {
+		return ""
+	}
+	cleanPath := path.Clean("/" + requestPath)
+	target := path.Join(root, cleanPath)
+	fi, err := os.Stat(target)
+	if err != nil {
+		return ""
+	}
+	if fi.IsDir() {
+		for _, doc := range defaults {
+			docPath := path.Join(target, doc)
+			if ff, err := os.Stat(docPath); err == nil && !ff.IsDir() {
+				return docPath
+			}
+		}
+		return ""
+	}
+	return target
+}
+
+func splitCSV(v string) []string {
+	parts := strings.Split(v, ",")
+	items := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(strings.ToLower(p))
+		if p != "" {
+			items = append(items, p)
+		}
+	}
+	return items
+}
+
+func containsAll(got []string, allow []string) bool {
+	if len(got) == 0 {
+		return true
+	}
+	set := map[string]struct{}{}
+	for _, v := range allow {
+		v = strings.ToLower(strings.TrimSpace(v))
+		if v != "" {
+			set[v] = struct{}{}
+		}
+	}
+	for _, v := range got {
+		if _, ok := set[v]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func containsOrigin(origins []string, origin string) bool {
+	origin = strings.ToLower(strings.TrimSpace(origin))
+	for _, item := range origins {
+		item = strings.ToLower(strings.TrimSpace(item))
+		if item == "" {
+			continue
+		}
+		if origin == item || strings.HasPrefix(origin, item) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsString(vals []string, target string) bool {
+	target = strings.ToLower(strings.TrimSpace(target))
+	for _, v := range vals {
+		if strings.ToLower(strings.TrimSpace(v)) == target {
+			return true
+		}
+	}
+	return false
 }
 
 // authorizing handles authentication.

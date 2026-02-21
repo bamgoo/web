@@ -79,18 +79,62 @@ func (m *Module) RegisterRouter(name string, config Router) {
 		return
 	}
 
-	siteName, routerName := splitPrefix(name)
-	site := m.ensureSite(siteName)
+	name = strings.ToLower(name)
+	if bamgoo.Override() {
+		m.routers[name] = config
+	} else if _, ok := m.routers[name]; !ok {
+		m.routers[name] = config
+	}
+}
 
+// RegisterFilter registers a web filter.
+func (m *Module) RegisterFilter(name string, config Filter) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if m.opened {
+		return
+	}
+
+	name = strings.ToLower(name)
+	if bamgoo.Override() {
+		m.filters[name] = config
+	} else if _, ok := m.filters[name]; !ok {
+		m.filters[name] = config
+	}
+}
+
+// RegisterHandler registers a web handler.
+func (m *Module) RegisterHandler(name string, config Handler) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if m.opened {
+		return
+	}
+
+	name = strings.ToLower(name)
+	if bamgoo.Override() {
+		m.handlers[name] = config
+	} else if _, ok := m.handlers[name]; !ok {
+		m.handlers[name] = config
+	}
+}
+
+func applyRouter(site *Site, routerName string, config Router) {
+	routers := expandRouter(routerName, config)
+	storeRouters(site.routers, routers)
+}
+
+func expandRouter(routerName string, config Router) map[string]Router {
 	if config.Uris == nil || len(config.Uris) == 0 {
 		config.Uris = []string{config.Uri}
 	} else if config.Uri != "" {
 		config.Uris = append(config.Uris, config.Uri)
 	}
 
-	routers := make(map[string]Router, 0)
+	routers := make(map[string]Router)
 
-	// Handle routing by method
 	if config.Routing != nil {
 		for method, methodConfig := range config.Routing {
 			realName := fmt.Sprintf("%s.%s", routerName, method)
@@ -105,7 +149,6 @@ func (m *Module) RegisterRouter(name string, config Router) {
 			realConfig.Data = nil
 			realConfig.Setting = nil
 
-			// Copy from parent
 			if config.Args != nil {
 				realConfig.Args = Vars{}
 				for k, v := range config.Args {
@@ -125,7 +168,6 @@ func (m *Module) RegisterRouter(name string, config Router) {
 				}
 			}
 
-			// Override from method config
 			if methodConfig.Name != "" {
 				realConfig.Name = methodConfig.Name
 			}
@@ -186,57 +228,34 @@ func (m *Module) RegisterRouter(name string, config Router) {
 		routers[routerName] = config
 	}
 
-	// Save routers
+	return routers
+}
+
+func storeRouters(target map[string]Router, routers map[string]Router) {
 	for key, router := range routers {
 		key = strings.ToLower(key)
 		if bamgoo.Override() {
-			site.routers[key] = router
-		} else {
-			if _, ok := site.routers[key]; !ok {
-				site.routers[key] = router
-			}
+			target[key] = router
+		} else if _, ok := target[key]; !ok {
+			target[key] = router
 		}
 	}
 }
 
-// RegisterFilter registers a web filter.
-func (m *Module) RegisterFilter(name string, config Filter) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-
-	if m.opened {
-		return
-	}
-	instName, filterName := splitPrefix(name)
-	site := m.ensureSite(instName)
-	filterName = strings.ToLower(filterName)
-
+func storeFilter(target map[string]Filter, name string, config Filter) {
+	name = strings.ToLower(name)
 	if bamgoo.Override() {
-		site.filters[filterName] = config
-	} else {
-		if _, ok := site.filters[filterName]; !ok {
-			site.filters[filterName] = config
-		}
+		target[name] = config
+	} else if _, ok := target[name]; !ok {
+		target[name] = config
 	}
 }
 
-// RegisterHandler registers a web handler.
-func (m *Module) RegisterHandler(name string, config Handler) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-
-	if m.opened {
-		return
-	}
-	instName, handlerName := splitPrefix(name)
-	site := m.ensureSite(instName)
-	handlerName = strings.ToLower(handlerName)
-
+func storeHandler(target map[string]Handler, name string, config Handler) {
+	name = strings.ToLower(name)
 	if bamgoo.Override() {
-		site.handlers[handlerName] = config
-	} else {
-		if _, ok := site.handlers[handlerName]; !ok {
-			site.handlers[handlerName] = config
-		}
+		target[name] = config
+	} else if _, ok := target[name]; !ok {
+		target[name] = config
 	}
 }

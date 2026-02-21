@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/mux"
 	. "github.com/bamgoo/base"
+	"github.com/gorilla/mux"
 )
 
 func init() {
@@ -57,16 +57,12 @@ func (c *defaultConnect) Close() error {
 	return c.server.Shutdown(ctx)
 }
 
-func (c *defaultConnect) Register(name string, info Info, domains []string, domain string) error {
+func (c *defaultConnect) Register(name string, info Info, hosts []string) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	useDomains := make([]string, 0)
-	if len(domains) > 0 {
-		useDomains = append(useDomains, domains...)
-	} else if domain != "" {
-		useDomains = append(useDomains, domain)
-	}
+	useHosts := make([]string, 0, len(hosts))
+	useHosts = append(useHosts, hosts...)
 
 	register := func(routeName string, r *mux.Router) {
 		route := r.HandleFunc(info.Uri, c.ServeHTTP).Name(routeName)
@@ -76,16 +72,17 @@ func (c *defaultConnect) Register(name string, info Info, domains []string, doma
 		c.routes[routeName] = route
 	}
 
-	if len(useDomains) == 0 {
+	if len(useHosts) == 0 {
 		register(name, c.router)
 		return nil
 	}
 
-	for _, host := range useDomains {
+	for _, host := range useHosts {
 		if host == "" {
 			continue
 		}
 		routeName := name + "#" + host
+		host = normalizeHostPattern(host)
 		sub := c.router.Host(host).Subrouter()
 		register(routeName, sub)
 	}
@@ -141,4 +138,12 @@ func (c *defaultConnect) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	if c.instance.Delegate != nil {
 		c.instance.Delegate.Serve(name, params, res, req)
 	}
+}
+
+func normalizeHostPattern(host string) string {
+	host = strings.TrimSpace(strings.ToLower(host))
+	if strings.HasPrefix(host, "*.") {
+		return "{subdomain:[^.]+}" + host[1:]
+	}
+	return host
 }

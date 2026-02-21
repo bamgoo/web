@@ -193,7 +193,9 @@ func (u *webUrl) Site(name string, path string, options ...Map) string {
 	}
 
 	host := ""
-	if site.Config.Domain != "" {
+	if len(site.Hosts) > 0 {
+		host = site.Hosts[0]
+	} else if site.Config.Domain != "" {
 		host = site.Config.Domain
 	} else if len(site.Config.Domains) > 0 {
 		host = site.Config.Domains[0]
@@ -203,9 +205,13 @@ func (u *webUrl) Site(name string, path string, options ...Map) string {
 		host = "localhost"
 	}
 
-	if !strings.Contains(host, ":") && site.Config.Port > 0 {
-		if site.Config.Port != 80 && site.Config.Port != 443 {
-			host = fmt.Sprintf("%s:%d", host, site.Config.Port)
+	port := module.config.Port
+	if port <= 0 {
+		port = site.Config.Port
+	}
+	if !strings.Contains(host, ":") && port > 0 {
+		if port != 80 && port != 443 {
+			host = fmt.Sprintf("%s:%d", host, port)
 		}
 	}
 
