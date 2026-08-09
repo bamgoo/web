@@ -158,7 +158,11 @@ func (m *Module) Register(name string, value Any) {
 	case Driver:
 		m.RegisterDriver(name, v)
 	case Config:
-		m.RegisterConfig(name, v)
+		if name == "" {
+			m.RegisterRootConfig(v)
+		} else {
+			m.RegisterConfig(name, v)
+		}
 	case Configs:
 		m.RegisterConfigs(v)
 	case Site:
@@ -176,6 +180,18 @@ func (m *Module) Register(name string, value Any) {
 	case Handler:
 		m.RegisterHandler(name, v)
 	}
+}
+
+// RegisterRootConfig registers programmatic connection defaults shared by all
+// sites. Named Config registrations remain site-specific.
+func (m *Module) RegisterRootConfig(config Config) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if m.opened {
+		return
+	}
+	m.config = mergeConfig(m.config, config)
 }
 
 // RegisterRouters registers multiple routers.

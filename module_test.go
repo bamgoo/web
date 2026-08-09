@@ -148,6 +148,23 @@ func TestRegisterSiteTypeCompatibility(t *testing.T) {
 	}
 }
 
+func TestUnnamedConfigRegistersConnectionDefaults(t *testing.T) {
+	m := &Module{configs: map[string]Config{}}
+	m.Register("", Config{Host: "127.0.0.1", Port: 9090, HttpOnly: true})
+
+	if m.config.Host != "127.0.0.1" || m.config.Port != 9090 || !m.config.HttpOnly {
+		t.Fatalf("unexpected root config: %#v", m.config)
+	}
+	if len(m.configs) != 0 {
+		t.Fatalf("unnamed config must not create a site override: %#v", m.configs)
+	}
+
+	m.Register("api", Config{Alias: "gateway"})
+	if m.configs["api"].Alias != "gateway" {
+		t.Fatalf("named config must remain site-specific: %#v", m.configs)
+	}
+}
+
 func TestConfigParsesSiteCrossOnly(t *testing.T) {
 	m := &Module{
 		defaultConfig: Config{},
