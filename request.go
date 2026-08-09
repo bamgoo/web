@@ -22,6 +22,9 @@ var (
 
 // preprocessing handles token and language.
 func (site *webSite) preprocessing(ctx *Context) {
+	if site.Config.MaxBodyBytes > 0 && ctx.reader.Body != nil {
+		ctx.reader.Body = http.MaxBytesReader(ctx.writer, ctx.reader.Body, site.Config.MaxBodyBytes)
+	}
 	token := ""
 	if ctx.site.Config.Cookie != "" {
 		if c, e := ctx.reader.Cookie(ctx.site.Config.Cookie); e == nil {

@@ -1,15 +1,34 @@
 package web
 
 import (
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 
 	. "github.com/infrago/base"
 	"github.com/infrago/infra"
 )
+
+func TestPreprocessingLimitsRequestBody(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "http://example.test/upload", strings.NewReader("12345"))
+	site := &webSite{Config: Config{MaxBodyBytes: 4}}
+	ctx := site.newContext()
+	ctx.reader = request
+	ctx.writer = recorder
+
+	site.preprocessing(ctx)
+	_, err := io.ReadAll(request.Body)
+	var tooLarge *http.MaxBytesError
+	if !errors.As(err, &tooLarge) {
+		t.Fatalf("expected MaxBytesError, got %v", err)
+	}
+}
 
 var prepareLoadInfraOnce sync.Once
 
@@ -112,7 +131,7 @@ func TestLoadingInvokesAndStoresLocals(t *testing.T) {
 			return Map{"id": ctx.Args["id"], "name": "demo"}
 		},
 	})
-		prepareLoadInfra(t)
+	prepareLoadInfra(t)
 
 	site := &webSite{}
 	ctx := &Context{

@@ -72,6 +72,7 @@ type (
 		WriteTimeout      time.Duration
 		IdleTimeout       time.Duration
 		ShutdownTimeout   time.Duration
+		MaxBodyBytes      int64
 
 		CertFile string
 		KeyFile  string
@@ -870,6 +871,12 @@ func parseConfig(conf Map) Config {
 	if v, ok := conf["shutdown_timeout"]; ok {
 		cfg.ShutdownTimeout = parseDuration(v)
 	}
+	if v, ok := parsePort(conf["maxbodybytes"]); ok && v > 0 {
+		cfg.MaxBodyBytes = int64(v)
+	}
+	if v, ok := parsePort(conf["max_body_bytes"]); ok && v > 0 {
+		cfg.MaxBodyBytes = int64(v)
+	}
 	if v, ok := conf["cert"].(string); ok {
 		cfg.CertFile = v
 	}
@@ -1076,6 +1083,9 @@ func mergeConfig(baseCfg, newCfg Config) Config {
 	}
 	if newCfg.ShutdownTimeout > 0 {
 		out.ShutdownTimeout = newCfg.ShutdownTimeout
+	}
+	if newCfg.MaxBodyBytes > 0 {
+		out.MaxBodyBytes = newCfg.MaxBodyBytes
 	}
 	if newCfg.CertFile != "" {
 		out.CertFile = newCfg.CertFile
