@@ -113,6 +113,12 @@ func (site *webSite) open(ctx *Context) {
 	ctx.next(site.serve)
 
 	ctx.Next()
+	// A Serve filter runs before route lookup and may intentionally terminate
+	// the chain with a response (for example CORS or maintenance policies).
+	// Flush that response even though the normal serve phase was skipped.
+	if ctx.output != nil && !ctx.output.Committed() && ctx.Body != nil {
+		site.response(ctx)
+	}
 }
 
 func (site *webSite) serve(ctx *Context) {
