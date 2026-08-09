@@ -2,10 +2,31 @@ package web
 
 import (
 	"testing"
+	"time"
 
 	. "github.com/infrago/base"
 	"github.com/infrago/infra"
 )
+
+func TestDefaultConnectionUsesConfiguredTimeouts(t *testing.T) {
+	config := Config{
+		Host: "127.0.0.1", Port: 8080,
+		ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 7 * time.Second,
+		WriteTimeout: 9 * time.Second, IdleTimeout: 11 * time.Second,
+	}
+	connection, err := (&defaultDriver{}).Connect(&Instance{Config: config})
+	if err != nil {
+		t.Fatalf("connect default driver: %v", err)
+	}
+	conn := connection.(*defaultConnect)
+	if err := conn.Open(); err != nil {
+		t.Fatalf("open default connection: %v", err)
+	}
+	if conn.server.ReadHeaderTimeout != config.ReadHeaderTimeout || conn.server.ReadTimeout != config.ReadTimeout ||
+		conn.server.WriteTimeout != config.WriteTimeout || conn.server.IdleTimeout != config.IdleTimeout {
+		t.Fatalf("unexpected server timeouts: %#v", conn.server)
+	}
+}
 
 func TestParseConfigAliasAndDomainLists(t *testing.T) {
 	cfg := parseConfig(Map{

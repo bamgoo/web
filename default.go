@@ -41,13 +41,30 @@ func (driver *defaultDriver) Connect(inst *Instance) (Connection, error) {
 }
 
 func (c *defaultConnect) Open() error {
+	readHeaderTimeout := c.instance.Config.ReadHeaderTimeout
+	if readHeaderTimeout <= 0 {
+		readHeaderTimeout = 5 * time.Second
+	}
+	readTimeout := c.instance.Config.ReadTimeout
+	if readTimeout <= 0 {
+		readTimeout = 15 * time.Second
+	}
+	writeTimeout := c.instance.Config.WriteTimeout
+	if writeTimeout <= 0 {
+		writeTimeout = 15 * time.Second
+	}
+	idleTimeout := c.instance.Config.IdleTimeout
+	if idleTimeout <= 0 {
+		idleTimeout = 60 * time.Second
+	}
 	c.router = mux.NewRouter()
 	c.server = &http.Server{
-		Addr:         fmt.Sprintf("%s:%d", c.instance.Config.Host, c.instance.Config.Port),
-		WriteTimeout: time.Second * 15,
-		ReadTimeout:  time.Second * 15,
-		IdleTimeout:  time.Second * 60,
-		Handler:      c.router,
+		Addr:              fmt.Sprintf("%s:%d", c.instance.Config.Host, c.instance.Config.Port),
+		ReadHeaderTimeout: readHeaderTimeout,
+		WriteTimeout:      writeTimeout,
+		ReadTimeout:       readTimeout,
+		IdleTimeout:       idleTimeout,
+		Handler:           c.router,
 	}
 
 	c.router.NotFoundHandler = c
@@ -57,7 +74,11 @@ func (c *defaultConnect) Open() error {
 }
 
 func (c *defaultConnect) Close() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	shutdownTimeout := c.instance.Config.ShutdownTimeout
+	if shutdownTimeout <= 0 {
+		shutdownTimeout = 5 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	return c.server.Shutdown(ctx)
 }

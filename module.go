@@ -64,9 +64,14 @@ type (
 	}
 
 	Config struct {
-		Driver string
-		Port   int
-		Host   string
+		Driver            string
+		Port              int
+		Host              string
+		ReadHeaderTimeout time.Duration
+		ReadTimeout       time.Duration
+		WriteTimeout      time.Duration
+		IdleTimeout       time.Duration
+		ShutdownTimeout   time.Duration
 
 		CertFile string
 		KeyFile  string
@@ -835,6 +840,36 @@ func parseConfig(conf Map) Config {
 	if v, ok := conf["bind"].(string); ok {
 		cfg.Host = v
 	}
+	if v, ok := conf["readheadertimeout"]; ok {
+		cfg.ReadHeaderTimeout = parseDuration(v)
+	}
+	if v, ok := conf["read_header_timeout"]; ok {
+		cfg.ReadHeaderTimeout = parseDuration(v)
+	}
+	if v, ok := conf["readtimeout"]; ok {
+		cfg.ReadTimeout = parseDuration(v)
+	}
+	if v, ok := conf["read_timeout"]; ok {
+		cfg.ReadTimeout = parseDuration(v)
+	}
+	if v, ok := conf["writetimeout"]; ok {
+		cfg.WriteTimeout = parseDuration(v)
+	}
+	if v, ok := conf["write_timeout"]; ok {
+		cfg.WriteTimeout = parseDuration(v)
+	}
+	if v, ok := conf["idletimeout"]; ok {
+		cfg.IdleTimeout = parseDuration(v)
+	}
+	if v, ok := conf["idle_timeout"]; ok {
+		cfg.IdleTimeout = parseDuration(v)
+	}
+	if v, ok := conf["shutdowntimeout"]; ok {
+		cfg.ShutdownTimeout = parseDuration(v)
+	}
+	if v, ok := conf["shutdown_timeout"]; ok {
+		cfg.ShutdownTimeout = parseDuration(v)
+	}
 	if v, ok := conf["cert"].(string); ok {
 		cfg.CertFile = v
 	}
@@ -1026,6 +1061,21 @@ func mergeConfig(baseCfg, newCfg Config) Config {
 	}
 	if newCfg.Host != "" {
 		out.Host = newCfg.Host
+	}
+	if newCfg.ReadHeaderTimeout > 0 {
+		out.ReadHeaderTimeout = newCfg.ReadHeaderTimeout
+	}
+	if newCfg.ReadTimeout > 0 {
+		out.ReadTimeout = newCfg.ReadTimeout
+	}
+	if newCfg.WriteTimeout > 0 {
+		out.WriteTimeout = newCfg.WriteTimeout
+	}
+	if newCfg.IdleTimeout > 0 {
+		out.IdleTimeout = newCfg.IdleTimeout
+	}
+	if newCfg.ShutdownTimeout > 0 {
+		out.ShutdownTimeout = newCfg.ShutdownTimeout
 	}
 	if newCfg.CertFile != "" {
 		out.CertFile = newCfg.CertFile
