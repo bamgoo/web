@@ -109,17 +109,6 @@ func (site *webSite) body(ctx *Context) {
 
 	// Write cookies
 	for _, cookie := range ctx.cookies {
-		cookie.Path = "/"
-		cookie.HttpOnly = ctx.site.Config.HttpOnly
-		if ctx.site.Config.Domain != "" {
-			cookie.Domain = ctx.site.Config.Domain
-		}
-		if ctx.Domain != "" {
-			cookie.Domain = ctx.Domain
-		}
-		if ctx.site.Config.MaxAge > 0 {
-			cookie.MaxAge = int(ctx.site.Config.MaxAge.Seconds())
-		}
 		http.SetCookie(ctx.writer, &cookie)
 	}
 

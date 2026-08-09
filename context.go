@@ -170,16 +170,19 @@ func (ctx *Context) Cookie(key string, vals ...Any) string {
 	if len(vals) > 0 {
 		vvv := vals[0]
 		if vvv == nil {
-			cookie := http.Cookie{Name: key, HttpOnly: true, MaxAge: -1}
+			cookie := ctx.defaultCookie(key, "")
+			cookie.MaxAge = -1
 			ctx.cookies[key] = cookie
 			return ""
 		}
 		switch val := vvv.(type) {
 		case http.Cookie:
+			if val.Name == "" {
+				val.Name = key
+			}
 			ctx.cookies[key] = val
 		case string:
-			cookie := http.Cookie{Name: key, Value: val}
-			ctx.cookies[key] = cookie
+			ctx.cookies[key] = ctx.defaultCookie(key, val)
 		}
 		return ""
 	}
@@ -189,6 +192,18 @@ func (ctx *Context) Cookie(key string, vals ...Any) string {
 		return c.Value
 	}
 	return ""
+}
+
+func (ctx *Context) defaultCookie(key, value string) http.Cookie {
+	cookie := http.Cookie{Name: key, Value: value, Path: "/"}
+	if ctx.site != nil {
+		cookie.HttpOnly = ctx.site.Config.HttpOnly
+		cookie.Domain = ctx.site.Config.Domain
+		if ctx.site.Config.MaxAge > 0 {
+			cookie.MaxAge = int(ctx.site.Config.MaxAge.Seconds())
+		}
+	}
+	return cookie
 }
 
 // Sign issues token and marks cookie issuance.

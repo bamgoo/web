@@ -5,10 +5,48 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	. "github.com/infrago/base"
 	"github.com/infrago/infra"
 )
+
+func TestBodyPreservesExplicitCookieAttributes(t *testing.T) {
+	rec := httptest.NewRecorder()
+	site := &webSite{Config: Config{Domain: "example.com", HttpOnly: true, MaxAge: time.Hour}}
+	ctx := &Context{
+		Meta: infra.NewMeta(), site: site, writer: rec,
+		headers: map[string]string{}, cookies: map[string]Cookie{}, Code: StatusNoContent,
+	}
+	ctx.Cookie("csrf", http.Cookie{
+		Name: "csrf", Value: "csrf-value", Path: "/auth", HttpOnly: false,
+		Secure: true, SameSite: http.SameSiteStrictMode, MaxAge: 300,
+	})
+	ctx.Cookie("access", http.Cookie{
+		Name: "access", Value: "access-value", Path: "/", HttpOnly: true,
+		Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: 600,
+	})
+	ctx.Cookie("default", "default-value")
+
+	site.body(ctx)
+
+	cookies := map[string]*http.Cookie{}
+	for _, cookie := range rec.Result().Cookies() {
+		cookies[cookie.Name] = cookie
+	}
+	csrf := cookies["csrf"]
+	if csrf == nil || csrf.HttpOnly || !csrf.Secure || csrf.Path != "/auth" || csrf.SameSite != http.SameSiteStrictMode || csrf.MaxAge != 300 || csrf.Domain != "" {
+		t.Fatalf("explicit CSRF cookie attributes were changed: %#v", csrf)
+	}
+	access := cookies["access"]
+	if access == nil || !access.HttpOnly || !access.Secure || access.SameSite != http.SameSiteLaxMode || access.MaxAge != 600 {
+		t.Fatalf("explicit access cookie attributes were changed: %#v", access)
+	}
+	defaults := cookies["default"]
+	if defaults == nil || !defaults.HttpOnly || defaults.Path != "/" || defaults.Domain != "example.com" || defaults.MaxAge != int(time.Hour.Seconds()) {
+		t.Fatalf("string cookie did not use site defaults: %#v", defaults)
+	}
+}
 
 func TestBodyAnswerEncodesDataBySiteConfig(t *testing.T) {
 	infra.Register("answer_test_web", infra.Codec{
