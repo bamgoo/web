@@ -186,6 +186,20 @@ func TestUnnamedConfigRegistersConnectionDefaults(t *testing.T) {
 	}
 }
 
+func TestRegisterRoutersPreservesDefaultSitePrefix(t *testing.T) {
+	m := &Module{routers: map[string]Router{}}
+	m.RegisterRouters(".", Routers{
+		"auth.login": {Uri: "/v1/auth/login"},
+	})
+
+	if _, ok := m.routers[".auth.login"]; !ok {
+		t.Fatalf("expected default-site route, got %#v", m.routers)
+	}
+	if _, ok := m.routers["..auth.login"]; ok {
+		t.Fatalf("double-dot route must not be registered: %#v", m.routers)
+	}
+}
+
 func TestConfigParsesSiteCrossOnly(t *testing.T) {
 	m := &Module{
 		defaultConfig: Config{},

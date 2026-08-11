@@ -204,7 +204,9 @@ func (m *Module) RegisterRootConfig(config Config) {
 func (m *Module) RegisterRouters(prefix string, routers Routers) {
 	for name, router := range routers {
 		target := name
-		if prefix != "" {
+		if prefix == "." {
+			target = "." + name
+		} else if prefix != "" {
 			target = prefix + "." + name
 		}
 		m.RegisterRouter(target, router)
