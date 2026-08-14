@@ -54,6 +54,9 @@ type (
 		Value  Map
 		Args   Map
 		Locals Map
+		// RequestBody preserves the exact bytes of non-multipart request bodies.
+		// It is useful for verifying signed webhook payloads after parsing.
+		RequestBody []byte
 
 		Code int
 		Type string

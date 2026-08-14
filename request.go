@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -419,6 +420,7 @@ func (site *webSite) parsing(ctx *Context) {
 		if strings.Contains(ctype, "json") {
 			body, err := io.ReadAll(req.Body)
 			if err == nil {
+				ctx.RequestBody = append(ctx.RequestBody[:0], body...)
 				var jsonBody Map
 				if err := json.Unmarshal(body, &jsonBody); err == nil {
 					for key, val := range jsonBody {
@@ -428,6 +430,13 @@ func (site *webSite) parsing(ctx *Context) {
 				}
 			}
 		} else {
+			if !strings.Contains(strings.ToLower(ctype), "multipart/") {
+				body, err := io.ReadAll(req.Body)
+				if err == nil {
+					ctx.RequestBody = append(ctx.RequestBody[:0], body...)
+					req.Body = io.NopCloser(bytes.NewReader(body))
+				}
+			}
 			// Parse form
 			err := req.ParseMultipartForm(32 << 20)
 			if err != nil {

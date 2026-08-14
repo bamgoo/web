@@ -30,6 +30,44 @@ func TestPreprocessingLimitsRequestBody(t *testing.T) {
 	}
 }
 
+func TestParsingPreservesExactJSONRequestBody(t *testing.T) {
+	body := []byte("{\n  \"event\": \"checkout.completed\", \"value\": 42\n}")
+	request := httptest.NewRequest(http.MethodPost, "http://example.test/webhook", strings.NewReader(string(body)))
+	request.Header.Set("Content-Type", "application/json")
+	site := &webSite{}
+	ctx := site.newContext()
+	ctx.reader = request
+	ctx.Method = http.MethodPost
+
+	site.parsing(ctx)
+
+	if string(ctx.RequestBody) != string(body) {
+		t.Fatalf("expected exact request body %q, got %q", body, ctx.RequestBody)
+	}
+	if ctx.Value["event"] != "checkout.completed" {
+		t.Fatalf("expected parsed JSON fields, got %#v", ctx.Value)
+	}
+}
+
+func TestParsingPreservesFormRequestBody(t *testing.T) {
+	body := "event=checkout.completed&value=42"
+	request := httptest.NewRequest(http.MethodPost, "http://example.test/webhook", strings.NewReader(body))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	site := &webSite{}
+	ctx := site.newContext()
+	ctx.reader = request
+	ctx.Method = http.MethodPost
+
+	site.parsing(ctx)
+
+	if string(ctx.RequestBody) != body {
+		t.Fatalf("expected exact request body %q, got %q", body, ctx.RequestBody)
+	}
+	if ctx.Value["event"] != "checkout.completed" {
+		t.Fatalf("expected parsed form fields, got %#v", ctx.Value)
+	}
+}
+
 var prepareLoadInfraOnce sync.Once
 
 func prepareLoadInfra(t *testing.T) {
