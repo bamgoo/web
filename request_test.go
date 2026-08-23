@@ -130,6 +130,28 @@ func TestCrossingHandlesOptionsWithoutRoute(t *testing.T) {
 	}
 }
 
+func TestPreprocessingPropagatesRequestID(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "http://sys.example.com/demo", nil)
+	req.Header.Set("X-Correlation-ID", "request-456")
+	site := &webSite{}
+	ctx := &Context{
+		Meta:    infra.NewMeta(),
+		site:    site,
+		reader:  req,
+		headers: map[string]string{},
+		cookies: map[string]Cookie{},
+	}
+
+	site.preprocessing(ctx)
+
+	if got := ctx.RequestId(); got != "request-456" {
+		t.Fatalf("expected correlation id to propagate, got %q", got)
+	}
+	if got := ctx.headers["X-Request-ID"]; got != "request-456" {
+		t.Fatalf("expected response request id, got %q", got)
+	}
+}
+
 func TestExpandRouterMergesLoadFromMethodRouting(t *testing.T) {
 	routers := expandRouter("demo", Router{
 		Uri: "/demo",

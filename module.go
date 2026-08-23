@@ -1,7 +1,6 @@
 package web
 
 import (
-	"fmt"
 	"io/fs"
 	"net"
 	"net/http"
@@ -684,7 +683,9 @@ func (m *Module) Start() {
 	if m.instance != nil && m.instance.connect != nil {
 		connCount = 1
 	}
-	fmt.Printf("infrago web module is running with %d connections, %d sites, %d routers.\n", connCount, len(m.sites), routeCount)
+	infra.Log(infra.LogLevelInfo, "web", "module started", Map{
+		"connections": connCount, "sites": len(m.sites), "routers": routeCount,
+	})
 }
 
 func (m *Module) Stop() {
